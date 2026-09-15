@@ -34,13 +34,25 @@ fi
 
 dir="$(dirname "$target")"
 main="$(basename "$target" .java)"
-out="build/${dir//\//_}"
 
+# package 선언이 있으면 (step07 이후) 소스 루트를 패키지 깊이만큼 위로 올리고,
+# 실행할 클래스 이름 앞에 패키지를 붙인다. 없으면 파일이 있는 폴더가 곧 소스 루트다.
+pkg="$(sed -n -E 's/^[[:space:]]*package[[:space:]]+([A-Za-z0-9_.]+)[[:space:]]*;.*/\1/p' "$target" | head -1)"
+srcroot="$dir"
+if [ -n "$pkg" ]; then
+  depth="$(echo "$pkg" | tr '.' '\n' | grep -c .)"
+  for _ in $(seq 1 "$depth"); do
+    srcroot="$(dirname "$srcroot")"
+  done
+  main="$pkg.$main"
+fi
+
+out="build/${srcroot//\//_}"
 mkdir -p "$out"
 
-# -sourcepath: 이 파일이 참조하는 다른 클래스는 같은 폴더에서 찾아 함께 컴파일한다.
+# -sourcepath: 이 파일이 참조하는 다른 클래스는 소스 루트에서 찾아 함께 컴파일한다.
 # (폴더 전체를 컴파일하지는 않으므로, 상관없는 파일이 깨져 있어도 방해받지 않는다)
-if ! javac -encoding UTF-8 -sourcepath "$dir" -d "$out" "$target"; then
+if ! javac -encoding UTF-8 -sourcepath "$srcroot" -d "$out" "$target"; then
   echo
   echo "── 컴파일 실패. 에러 메시지를 notes/errors.md 에 적어두세요. ──" >&2
   exit 1
