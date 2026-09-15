@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# 자바 파일 하나를 컴파일하고 실행한다.
+#   ./run step01/Hello.java
+#   ./run answers/step01/Step01Answers.java
+# 지정한 파일이 있는 폴더의 .java 전체를 컴파일한 뒤, 지정한 파일의 클래스를 실행한다.
+set -uo pipefail
+
+cd "$(dirname "$0")"
+
+if [ $# -eq 0 ]; then
+  echo "사용법: ./run <파일경로> [실행인자...]"
+  echo
+  echo "예시:"
+  echo "  ./run step01/Hello.java"
+  echo "  ./run answers/step01/Step01Answers.java"
+  echo
+  echo "지금 있는 파일:"
+  find src answers -name '*.java' 2>/dev/null | sed 's|^src/||' | sort | sed 's|^|  |'
+  exit 1
+fi
+
+target="$1"
+shift
+
+# 'src/' 는 생략할 수 있다
+if [ ! -f "$target" ] && [ -f "src/$target" ]; then
+  target="src/$target"
+fi
+
+if [ ! -f "$target" ]; then
+  echo "파일이 없습니다: $target" >&2
+  exit 1
+fi
+
+dir="$(dirname "$target")"
+main="$(basename "$target" .java)"
+out="build/${dir//\//_}"
+
+mkdir -p "$out"
+
+# -sourcepath: 이 파일이 참조하는 다른 클래스는 같은 폴더에서 찾아 함께 컴파일한다.
+# (폴더 전체를 컴파일하지는 않으므로, 상관없는 파일이 깨져 있어도 방해받지 않는다)
+if ! javac -encoding UTF-8 -sourcepath "$dir" -d "$out" "$target"; then
+  echo
+  echo "── 컴파일 실패. 에러 메시지를 notes/errors.md 에 적어두세요. ──" >&2
+  exit 1
+fi
+
+java -cp "$out" "$main" "$@"
