@@ -3,3 +3,7 @@ build/
 .DS_Store
 .idea/
 *.iml
+
+# 실무 연결 트랙 — 회사 코드 참조. 공개 저장소에 올리지 않는다
+work/
+src/work/
